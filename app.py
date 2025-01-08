@@ -16,6 +16,10 @@ class FruitClassificationApp(Gtk.ApplicationWindow):
         self.set_title("Fruit Classification")
         self.set_default_size(400, 400)
 
+        self.images = [self.load_pixbuf("sand.jpg")]
+        self.image_index = 0
+        self.broken = self.load_pixbuf("broken.jpg")
+
         css_provider = Gtk.CssProvider()
         css_provider.load_from_data(
             b"""
@@ -43,31 +47,35 @@ class FruitClassificationApp(Gtk.ApplicationWindow):
         top_bar = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=0)
         vbox.pack_start(top_bar, False, False, 0)
 
-        left_btn = Gtk.Button(label="\N{LEFTWARDS BLACK ARROW}")
-        left_btn.set_size_request(80, 80)
-        left_btn.get_style_context().add_class("arrow")
-        top_bar.pack_start(left_btn, False, False, 0)
+        previous_btn = Gtk.Button(label="\N{LEFTWARDS BLACK ARROW}")
+        previous_btn.set_size_request(80, 80)
+        previous_btn.get_style_context().add_class("arrow")
+        previous_btn.connect("clicked", self.go_to_previous)
+        top_bar.pack_start(previous_btn, False, False, 0)
 
-        plus_btn = Gtk.Button(label="\N{HEAVY PLUS SIGN}")
-        plus_btn.set_size_request(80, 80)
-        plus_btn.get_style_context().add_class("button")
-        top_bar.pack_start(plus_btn, False, False, 0)
+        add_btn = Gtk.Button(label="\N{HEAVY PLUS SIGN}")
+        add_btn.set_size_request(80, 80)
+        add_btn.get_style_context().add_class("button")
+        add_btn.connect("clicked", self.go_to_add)
+        top_bar.pack_start(add_btn, False, False, 0)
 
-        label = Gtk.Label(label="1/20")
-        label.set_hexpand(True)
-        label.set_justify(Gtk.Justification.CENTER)
-        top_bar.pack_start(label, False, False, 0)
+        self.image_label = Gtk.Label(label="1/20")
+        self.image_label.set_hexpand(True)
+        self.image_label.set_justify(Gtk.Justification.CENTER)
+        top_bar.pack_start(self.image_label, False, False, 0)
 
-        camera_btn = Gtk.Button(label="\N{CAMERA}")
-        camera_btn.set_size_request(80, 80)
-        camera_btn.get_style_context().add_class("button")
-        camera_btn.set_sensitive(False)
-        top_bar.pack_start(camera_btn, False, False, 0)
+        take_picture_btn = Gtk.Button(label="\N{CAMERA}")
+        take_picture_btn.set_size_request(80, 80)
+        take_picture_btn.get_style_context().add_class("button")
+        take_picture_btn.set_sensitive(False)
+        take_picture_btn.connect("clicked", self.go_to_take_picture)
+        top_bar.pack_start(take_picture_btn, False, False, 0)
 
-        right_btn = Gtk.Button(label="\N{RIGHTWARDS BLACK ARROW}")
-        right_btn.set_size_request(80, 80)
-        right_btn.get_style_context().add_class("arrow")
-        top_bar.pack_start(right_btn, False, False, 0)
+        next_btn = Gtk.Button(label="\N{RIGHTWARDS BLACK ARROW}")
+        next_btn.set_size_request(80, 80)
+        next_btn.get_style_context().add_class("arrow")
+        next_btn.connect("clicked", self.go_to_next)
+        top_bar.pack_start(next_btn, False, False, 0)
 
         separator = Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL)
         vbox.pack_start(separator, False, False, 0)
@@ -80,35 +88,64 @@ class FruitClassificationApp(Gtk.ApplicationWindow):
         self.image.set_valign(Gtk.Align.CENTER)
         vbox.pack_start(self.image, True, True, 0)
 
-        self.load_image("sand.jpg")
+        self.image.set_from_pixbuf(self.images[self.image_index])
 
         separator = Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL)
         vbox.pack_start(separator, False, False, 0)
 
-        bottom_label = Gtk.Label(label="APPLE")
-        bottom_label.set_hexpand(True)
-        bottom_label.set_justify(Gtk.Justification.CENTER)
-        bottom_label.set_margin_top(10)
-        bottom_label.set_margin_bottom(10)
-        bottom_label.get_style_context().add_class("prediction")
-        vbox.pack_start(bottom_label, False, False, 0)
+        self.predict_label = Gtk.Label(label="APPLE")
+        self.predict_label.set_hexpand(True)
+        self.predict_label.set_justify(Gtk.Justification.CENTER)
+        self.predict_label.set_margin_top(10)
+        self.predict_label.set_margin_bottom(10)
+        self.predict_label.get_style_context().add_class("prediction")
+        vbox.pack_start(self.predict_label, False, False, 0)
 
         self.show_all()
         self.set_resizable(False)
 
-    def load_image(self, path):
+    def load_pixbuf(self, path):
         try:
-            pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(
+            return GdkPixbuf.Pixbuf.new_from_file_at_scale(
                 path, width=400, height=300, preserve_aspect_ratio=True
             )
-            self.image.set_from_pixbuf(pixbuf)
         except gi.repository.GLib.GError as e:
-            dialog = Gtk.AlertDialog()
-            dialog.set_message("Error loading image")
-            dialog.set_detail(str(e))
-            dialog.set_modal(True)
-            dialog.set_buttons(["OK"])
-            dialog.choose(self)
+            dialog = Gtk.MessageDialog(
+                transient_for=self,
+                flags=0,
+                message_type=Gtk.MessageType.ERROR,
+                buttons=Gtk.ButtonsType.OK,
+                text="Error loading image",
+            )
+            dialog.format_secondary_text(str(e))
+            dialog.run()
+            dialog.destroy()
+        return None
+
+    def set_pixbuf(self, pixbuf):
+        self.image.set_from_pixbuf(self.broken if pixbuf is None else pixbuf)
+
+    def update_layout(self):
+        self.image_label.set_text(f"{self.image_index + 1}/{len(self.images)}")
+        self.set_pixbuf(self.images[self.image_index])
+
+    def go_to_next(self, _ev):
+        if self.image_index < len(self.images) - 1:
+            self.image_index += 1
+        self.update_layout()
+
+    def go_to_previous(self, _ev):
+        if self.image_index > 0:
+            self.image_index -= 1
+        self.update_layout()
+
+    def go_to_take_picture(self, _ev):
+        pass
+
+    def go_to_add(self, _ev):
+        self.images.append(self.load_pixbuf("apple.jpg"))
+        self.image_index = len(self.images) - 1
+        self.update_layout()
 
 
 class FruitClassificationApplication(Gtk.Application):

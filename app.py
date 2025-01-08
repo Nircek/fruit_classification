@@ -9,6 +9,12 @@ from gi.repository import Gtk, Gdk, GdkPixbuf
 settings = Gtk.Settings.get_default()
 settings.set_property("gtk-application-prefer-dark-theme", False)
 
+import random
+
+
+def predict(path):
+    return random.choice(["apple", "banana", "orange"])
+
 
 class FruitClassificationApp(Gtk.ApplicationWindow):
     def __init__(self, app):
@@ -17,6 +23,7 @@ class FruitClassificationApp(Gtk.ApplicationWindow):
         self.set_default_size(400, 400)
 
         self.images = [self.load_pixbuf("sand.jpg")]
+        self.predictions = ["sand"]
         self.image_index = 0
         self.broken = self.load_pixbuf("broken.jpg")
 
@@ -59,7 +66,7 @@ class FruitClassificationApp(Gtk.ApplicationWindow):
         add_btn.connect("clicked", self.go_to_add)
         top_bar.pack_start(add_btn, False, False, 0)
 
-        self.image_label = Gtk.Label(label="1/20")
+        self.image_label = Gtk.Label()
         self.image_label.set_hexpand(True)
         self.image_label.set_justify(Gtk.Justification.CENTER)
         top_bar.pack_start(self.image_label, False, False, 0)
@@ -88,12 +95,10 @@ class FruitClassificationApp(Gtk.ApplicationWindow):
         self.image.set_valign(Gtk.Align.CENTER)
         vbox.pack_start(self.image, True, True, 0)
 
-        self.image.set_from_pixbuf(self.images[self.image_index])
-
         separator = Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL)
         vbox.pack_start(separator, False, False, 0)
 
-        self.predict_label = Gtk.Label(label="APPLE")
+        self.predict_label = Gtk.Label()
         self.predict_label.set_hexpand(True)
         self.predict_label.set_justify(Gtk.Justification.CENTER)
         self.predict_label.set_margin_top(10)
@@ -101,6 +106,7 @@ class FruitClassificationApp(Gtk.ApplicationWindow):
         self.predict_label.get_style_context().add_class("prediction")
         vbox.pack_start(self.predict_label, False, False, 0)
 
+        self.update_layout()
         self.show_all()
         self.set_resizable(False)
 
@@ -127,6 +133,7 @@ class FruitClassificationApp(Gtk.ApplicationWindow):
 
     def update_layout(self):
         self.image_label.set_text(f"{self.image_index + 1}/{len(self.images)}")
+        self.predict_label.set_text(self.predictions[self.image_index])
         self.set_pixbuf(self.images[self.image_index])
 
     def go_to_next(self, _ev):
@@ -143,8 +150,28 @@ class FruitClassificationApp(Gtk.ApplicationWindow):
         pass
 
     def go_to_add(self, _ev):
-        self.images.append(self.load_pixbuf("apple.jpg"))
-        self.image_index = len(self.images) - 1
+        dialog = Gtk.FileChooserDialog(
+            title="Please choose files to open",
+            transient_for=self,
+            action=Gtk.FileChooserAction.OPEN,
+        )
+        dialog.add_buttons(
+            Gtk.STOCK_CANCEL,
+            Gtk.ResponseType.CANCEL,
+            Gtk.STOCK_OPEN,
+            Gtk.ResponseType.OK,
+        )
+        dialog.set_select_multiple(True)
+
+        response = dialog.run()
+        paths = dialog.get_filenames() if response == Gtk.ResponseType.OK else []
+        dialog.destroy()
+        if not paths:
+            return
+        self.image_index = len(self.images)  # go to the first new image
+        for path in paths:
+            self.images.append(self.load_pixbuf(path))
+            self.predictions.append(predict(path))
         self.update_layout()
 
 

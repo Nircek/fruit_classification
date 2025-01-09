@@ -3,17 +3,13 @@
 import gi
 
 gi.require_version("Gtk", "3.0")
-from gi.repository import Gtk, Gdk, GdkPixbuf
+from gi.repository import Gtk, Gdk, GdkPixbuf, GLib
+from PIL import Image, ImageOps
+from net import predict
 
 
 settings = Gtk.Settings.get_default()
 settings.set_property("gtk-application-prefer-dark-theme", False)
-
-import random
-
-
-def predict(path):
-    return random.choice(["apple", "banana", "orange"])
 
 
 class FruitClassificationApp(Gtk.ApplicationWindow):
@@ -112,9 +108,28 @@ class FruitClassificationApp(Gtk.ApplicationWindow):
 
     def load_pixbuf(self, path):
         try:
-            return GdkPixbuf.Pixbuf.new_from_file_at_scale(
-                path, width=400, height=300, preserve_aspect_ratio=True
+            im = Image.open(path)
+            if im.mode in ("RGBA", "LA") or (
+                im.mode == "P" and "transparency" in im.info
+            ):
+                background = Image.new("RGB", im.size, (255, 255, 255))
+                background.paste(
+                    im, mask=im.getchannel("A") if im.mode == "RGBA" else None
+                )
+                im = background
+            else:
+                im = im.convert("RGB")
+            im = ImageOps.contain(im, (400, 300))
+
+            data = im.tobytes()
+            w, h = im.size
+            data = GLib.Bytes.new(data)
+            return GdkPixbuf.Pixbuf.new_from_bytes(
+                data, GdkPixbuf.Colorspace.RGB, False, 8, w, h, w * 3
             )
+            # return GdkPixbuf.Pixbuf.new_from_file_at_scale(
+            #     path, width=400, height=300, preserve_aspect_ratio=True
+            # )
         except gi.repository.GLib.GError as e:
             dialog = Gtk.MessageDialog(
                 transient_for=self,

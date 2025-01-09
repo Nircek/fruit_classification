@@ -4,9 +4,6 @@ import torch.nn.functional as F
 from torchvision import transforms
 from PIL import Image
 
-# def install(package):
-#     subprocess.check_call([sys.executable, "-m", "pip", "install", package])
-
 
 classes = []
 
@@ -44,7 +41,7 @@ def loadNet():
 
 
 def prepareImage(image_path):
-    image = Image.open(image_path)
+    image = Image.open(image_path).convert("RGB")
     preprocess = transforms.Compose(
         [
             transforms.Resize((100, 100)),
@@ -61,13 +58,17 @@ def useNet(NN, tensor_image):
     with torch.no_grad():
         output = NN(tensor_image)
         _, predicted = torch.max(output, 1)
-        print(f"Predicted class: {classes[predicted.item()]}")
+        return classes[predicted.item()]
+
+
+classes = loadClasses()
+
+
+def predict(image_path):
+    net = loadNet()
+    net.eval()
+    return useNet(net, prepareImage(image_path))
 
 
 if __name__ == "__main__":
-    classes = loadClasses()
-    net = loadNet()
-    net.eval()
-
-    image_path = "./sand.jpg"
-    useNet(net, prepareImage(image_path))
+    print(predict("./sand.jpg"))

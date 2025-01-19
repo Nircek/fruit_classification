@@ -1,11 +1,14 @@
 # flake8: noqa: E402
 # pylint: disable=C0114, C0116, C0115, C0413, E1101
 from time import sleep
+import tempfile
+from pathlib import Path
 import gi
 
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk, Gdk, GdkPixbuf, GLib
 from PIL import Image, ImageOps
+from cv2 import VideoCapture, imwrite
 
 model_loading_dialog = Gtk.MessageDialog(
     title="Fruit Classification",
@@ -86,7 +89,6 @@ class FruitClassificationApp(Gtk.ApplicationWindow):
         take_picture_btn = Gtk.Button(label="\N{CAMERA}")
         take_picture_btn.set_size_request(80, 80)
         take_picture_btn.get_style_context().add_class("button")
-        take_picture_btn.set_sensitive(False)
         take_picture_btn.connect("clicked", self.go_to_take_picture)
         top_bar.pack_start(take_picture_btn, False, False, 0)
 
@@ -179,7 +181,17 @@ class FruitClassificationApp(Gtk.ApplicationWindow):
         self.update_layout()
 
     def go_to_take_picture(self, _ev):
-        pass
+        cam = VideoCapture(0)
+        s, img = cam.read()
+        tempdir = Path(tempfile.gettempdir())
+        tempfilename = str(tempdir / "webcamera_shot.jpg")
+        if s:
+            imwrite(tempfilename, img)
+            self.image_index = len(self.images)
+            self.images.append(self.load_pixbuf(tempfilename))
+            self.predictions.append(predict(tempfilename))
+            self.update_layout()
+        cam.release()
 
     def go_to_add(self, _ev):
         dialog = Gtk.FileChooserDialog(

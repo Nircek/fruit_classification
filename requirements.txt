@@ -17,6 +17,7 @@ nvidia-cusparse-cu12==12.3.1.170
 nvidia-nccl-cu12==2.21.5
 nvidia-nvjitlink-cu12==12.4.127
 nvidia-nvtx-cu12==12.4.127
+opencv-python==4.11.0.86
 pillow==11.1.0
 pycairo==1.27.0
 PyGObject==3.50.0

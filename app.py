@@ -1,11 +1,27 @@
 # flake8: noqa: E402
 # pylint: disable=C0114, C0116, C0115, C0413, E1101
+from time import sleep
 import gi
 
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk, Gdk, GdkPixbuf, GLib
 from PIL import Image, ImageOps
+
+model_loading_dialog = Gtk.MessageDialog(
+    title="Fruit Classification",
+    flags=0,
+    message_type=Gtk.MessageType.INFO,
+    buttons=Gtk.ButtonsType.OK,
+    text="Loading the model...",
+)
+model_loading_dialog.show()
+
+while Gtk.events_pending():
+    Gtk.main_iteration()
+    sleep(0.1)
 from net import predict
+
+model_loading_dialog.destroy()
 
 
 settings = Gtk.Settings.get_default()
@@ -121,6 +137,7 @@ class FruitClassificationApp(Gtk.ApplicationWindow):
                 im = im.convert("RGB")
             im = ImageOps.contain(im, (400, 300))
 
+            # SRC: https://gist.github.com/mozbugbox/10cd35b2872628246140
             data = im.tobytes()
             w, h = im.size
             data = GLib.Bytes.new(data)
